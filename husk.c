@@ -11,11 +11,28 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 void shellLoop();
 char *shellReadLine();
 char **shellSplitLine(char *line);
 int shellLaunch(char ** args);
+
+
+/*
+ * Built in functions.
+ */
+int shellcd(char **args);
+int shellhelp(char **args);
+int shellexit(char **args);
+
+/*
+ * Built in command names.
+ */
+const int NUM_BUILTINS = 3;
+const char *BUILTINS[] = {"cd\0", "help\0", "exit\0};
 
 /*
  * Number of chars allowed in a single command
@@ -37,7 +54,7 @@ const int TOKEN_BUFFER_SIZE = 7;
  */
 const char TOKEN_DELIM[9] = " \t\r\n\a";
 
-
+const char *version = "0.0.1\0";
 /*
  * Main function.
  */
@@ -100,7 +117,7 @@ char *shellReadLine() {
 		if (!done && pos >= bufferSize) {
 			bufferSize += RL_BUFFER_SIZE;
 			buffer = realloc(buffer, bufferSize);
-			if(buffer == NULL) {
+			if (buffer == NULL) {
 				fprintf(stderr, "husk: allocation error (r line buffer)\n");
 				exit(EXIT_FAILURE);
 			}
@@ -142,11 +159,11 @@ char **shellSplitLine(char *line) {
 		tokens[pos] = token;
 		pos += 1;
 		
-		if(pos >= bufferSize) {
+		if (pos >= bufferSize) {
 		
 			bufferSize += TOKEN_BUFFER_SIZE;
 			tokens = realloc(tokens, bufferSize * sizeof(char*));
-			if(tokens == NULL) {
+			if (tokens == NULL) {
 				fprintf(stderr, "husk: allocation error (r token buffer)\n");
 				exit(EXIT_FAILURE);
 			}
@@ -163,4 +180,55 @@ char **shellSplitLine(char *line) {
 
 int shellLaunch(char ** args) {
 
+	pid_t pid, wpid;
+	int status, test;
+	
+	pid = fork();
+	if (pid == 0) {
+		//In the child process
+		test = execvp(args[0], args);
+		//If process reaches this point, exec failed
+		if (test == -1) {
+			fprintf(stderr, "husk: exec error\n");
+		} else {
+			fprintf(stderr, "husk: exec error (other)\n");
+		}
+		exit(EXIT_FAILURE);
+	} else if (pid < 0) {
+		//fork error
+		fprintf(stderr, "husk: fork error\n");	
+	} else {
+		//In the parent process
+		do {
+			wpid = waitpid(pid, &status, WUNTRACED);
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+	}
+	
+	retrun(1);
+}
+
+
+/*
+ * Built In function implementations.
+ */
+
+int shellcd(char **args) {
+
+}
+
+int shellhelp(char **args) {
+
+	int i;
+	printf("Husk v%s help\n");
+	printf("Commands: :");
+	for(i = 0; i < NUM_BUILTINS; i++) {
+		printf(" %s\n", BUILTINS[i]);
+	}
+	printf("\n");
+	return(1);
+}
+
+int shellexit(char **args) {
+
+	return(0);
 }
